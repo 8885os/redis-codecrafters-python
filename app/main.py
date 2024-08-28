@@ -1,5 +1,7 @@
 import asyncio
 import argparse
+import os
+from .rdbparser import parser
 
 dir = None
 dbfilename = None
@@ -41,6 +43,17 @@ async def connect(reader, writer):
                         resp = f'*2\r\n${len(key)}\r\n{key}\r\n${len(dbfilename)}\r\n{dbfilename}\r\n'
                         writer.write(resp.encode('utf-8'))
                         await writer.drain()
+            case 'KEYS':
+                if os.path.exists(f'{dir}/{dbfilename}'):
+                    with open(f'{dir}/{dbfilename}', 'rb') as f:
+                        resp = parser(f)
+                        numKeys = resp.get('xfb')[1][-1]
+                        keyLength = resp.get('xfb')[4][2:3]
+                        key = resp.get('xfb')[4][3:]
+                        writer.write(f'*{numKeys}\r\n${keyLength}\r\n{key}\r\n'.encode('utf-8'))
+                        await writer.drain()
+
+                            
 async def timer(time,data):
     await asyncio.sleep(time)
     print('this ran asyncio.sleep for', time)
